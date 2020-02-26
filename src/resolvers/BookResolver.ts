@@ -1,18 +1,21 @@
-import { Resolver, Query, Mutation, Arg } from "type-graphql";
-import { Book } from "../models/Book";
+import { Resolver, Query, Mutation, Arg, Info, Ctx, Root } from "type-graphql";
+import { Book } from "../entities/Book";
 import { CreateBookInput } from "../inputs/CreateBookInput";
 import { UpdateBookInput } from "../inputs/UpdateBookInput";
+const graphqlFields = require('graphql-fields');
 
 @Resolver()
 export class BookResolver {
+  
   @Query(() => [Book])
   books() {
     return Book.find();
   }
 
   @Query(() => Book)
-  book(@Arg("id") id: string) {
-    return Book.findOne({ where: { id } });
+  book(@Arg("id") id: string, @Ctx() context: any, @Info() info: any) {
+    context.bookLoader.addFields([...Object.keys(graphqlFields(info))]);
+    return context.bookLoader.load(id);
   }
 
   @Mutation(() => Book)

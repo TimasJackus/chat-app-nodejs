@@ -7,9 +7,13 @@
   "license": "MIT",
   "dependencies": {
     "apollo-server": "^2.10.1",
+    "dataloader": "^2.0.0",
     "graphql": "^14.6.0",
+    "graphql-fields": "^2.0.3",
+    "pg": "^7.18.2",
     "reflect-metadata": "^0.1.13",
     "type-graphql": "^0.17.6",
+    "typedi": "^0.8.0",
     "typeorm": "^0.2.22"
   },
   "devDependencies": {
