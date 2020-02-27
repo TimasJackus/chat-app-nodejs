@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Arg, Info, Ctx } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, Info, Ctx, Authorized } from "type-graphql";
 import { Book } from "../entities/Book";
 import { CreateBookInput } from "./inputs/CreateBookInput";
 import { UpdateBookInput } from "./inputs/UpdateBookInput";
@@ -16,8 +16,9 @@ export class BookResolver {
     return Book.find();
   }
 
+  @Authorized()
   @Query(() => Book)
-  book(@Arg("id") id: string, @Fields() fields: string[]) {
+  book(@Arg("id") id: string, @Fields() fields: string[], @Ctx() context: any) {
     return this.bookService.getBookById(id, fields);
   }
 

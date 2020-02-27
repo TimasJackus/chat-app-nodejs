@@ -2,18 +2,22 @@ import "reflect-metadata";
 import { createConnection } from "typeorm";
 import { ApolloServer } from "apollo-server";
 import { buildSchema, ResolverData } from "type-graphql";
-import { BookResolver } from "./resolvers/BookResolver";
 import Container from "typedi";
+import { authChecker } from './AuthChecker';
 
 const main = async () => {
   await createConnection();
+
   const schema = await buildSchema({
-    resolvers: [BookResolver],
-    container: (({ context }: ResolverData<any>) => Container.of(context.requestId)) 
+    resolvers: [__dirname + "/resolvers/**/*.ts"],
+    container: (({ context }: ResolverData<any>) => Container.of(context.requestId)),
+    authChecker
   });
   const server = new ApolloServer({ 
     schema,
-    context: () => ({
+    debug: false,
+    context: ({ req }) => ({
+      authorization: req.headers.authorization,
       requestId: Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     }),
     plugins: [
@@ -26,8 +30,11 @@ const main = async () => {
       },
     ],
   });
-  await server.listen(4000);
-  console.log("Server has started!");
+
+
+  server.listen({ port: 4000 }, () =>
+    console.log(`Server ready at http://localhost:4000${server.graphqlPath}`),
+  );
 }
 
 main();
