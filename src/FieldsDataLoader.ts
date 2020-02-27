@@ -15,4 +15,9 @@ export default class FieldsDataLoader<K, V, C = K> extends DataLoader<K, V, C> {
         this.fieldSet.add(`${this.tableName}.${field}`)
       });
     }
+
+    loadSelect(id: K, fields: string[]) {
+      this.addFields(fields);
+      return this.load(id);
+    }
   }

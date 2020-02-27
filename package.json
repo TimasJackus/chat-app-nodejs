@@ -6,6 +6,7 @@
   "author": "Timas Jackus <jackustimas@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@types/graphql-fields": "^1.3.2",
     "apollo-server": "^2.10.1",
     "dataloader": "^2.0.0",
     "graphql": "^14.6.0",

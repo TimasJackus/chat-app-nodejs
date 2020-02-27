@@ -1,11 +1,15 @@
-import { Resolver, Query, Mutation, Arg, Info, Ctx, Root } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, Info, Ctx } from "type-graphql";
 import { Book } from "../entities/Book";
 import { CreateBookInput } from "../inputs/CreateBookInput";
 import { UpdateBookInput } from "../inputs/UpdateBookInput";
-const graphqlFields = require('graphql-fields');
+import { Service } from 'typedi';
+import BookService from "../services/BookService";
+import { Fields } from "../decorators/FieldsDecorator";
 
+@Service()
 @Resolver()
 export class BookResolver {
+  constructor(private readonly bookService: BookService) { }
   
   @Query(() => [Book])
   books() {
@@ -13,9 +17,8 @@ export class BookResolver {
   }
 
   @Query(() => Book)
-  book(@Arg("id") id: string, @Ctx() context: any, @Info() info: any) {
-    context.bookLoader.addFields([...Object.keys(graphqlFields(info))]);
-    return context.bookLoader.load(id);
+  book(@Arg("id") id: string, @Fields() fields: string[]) {
+    return this.bookService.getBookById(id, fields);
   }
 
   @Mutation(() => Book)

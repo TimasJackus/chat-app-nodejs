@@ -1,17 +1,17 @@
-import { getConnection } from "typeorm";
 import { Book } from "../entities/Book";
+import { Service } from "typedi";
+import FieldsDataLoader from "../FieldsDataLoader";
+import { getBooksByIds } from "./loaders";
 
+@Service()
 export default class BookRepository {
-    getBooksByIds(fieldSet: Set<string>, tableName: string) {
-        return function(ids: any) {
-          const fields = Array.from(fieldSet);
-          const books = getConnection()
-                        .getRepository(Book)
-                        .createQueryBuilder(tableName)
-                        .select(fields)
-                        .whereInIds(ids)
-                        .getMany();
-          return books;
-        }
+    private readonly loader: FieldsDataLoader<string, Book>;
+
+    constructor() {
+      this.loader = new FieldsDataLoader(getBooksByIds, 'book');
+    }
+
+    getBookById(id: string, fields: string[]) {
+      return this.loader.loadSelect(id, fields);
     }
 }
