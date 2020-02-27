@@ -1,10 +1,10 @@
 import { Resolver, Query, Mutation, Arg, Info, Ctx } from "type-graphql";
 import { Book } from "../entities/Book";
-import { CreateBookInput } from "../inputs/CreateBookInput";
-import { UpdateBookInput } from "../inputs/UpdateBookInput";
+import { CreateBookInput } from "./inputs/CreateBookInput";
+import { UpdateBookInput } from "./inputs/UpdateBookInput";
 import { Service } from 'typedi';
 import BookService from "../services/BookService";
-import { Fields } from "../decorators/FieldsDecorator";
+import { Fields } from "./decorators/FieldsDecorator";
 
 @Service()
 @Resolver()
