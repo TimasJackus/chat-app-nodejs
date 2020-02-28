@@ -1,18 +1,26 @@
-import { Resolver, Mutation, Arg } from "type-graphql";
+import { Resolver, Mutation, Arg, Query, Authorized } from "type-graphql";
 import { Service } from 'typedi';
-import { User } from "../entities";
+import { User, AuthResponse } from "../entities";
 import sha256 from 'sha256';
 import { LoginInput, RegisterInput } from "./inputs";
 import { GraphQLError } from "graphql";
 import jwt from 'jsonwebtoken';
 import { config } from "../config";
+import { UserService } from "../services";
+import { Fields } from "./decorators/FieldsDecorator";
 
 @Service()
 @Resolver()
 export class UserResolver {
-  constructor() { }
+  constructor(private userService: UserService) { }
+
+  @Authorized()
+  @Query(() => User, { nullable: true })
+  async getUser(@Arg("id") id: string, @Fields() fields: string[]) {
+    return await this.userService.getUserById(id, fields);
+  }
   
-  @Mutation(() => User)
+  @Mutation(() => AuthResponse)
   async register(@Arg("data") data: RegisterInput) {
     data.password = sha256(data.password);
     const user = User.create(data);
@@ -20,7 +28,7 @@ export class UserResolver {
     return user;
   }
 
-  @Mutation(() => User)
+  @Mutation(() => AuthResponse)
   async login(@Arg("data") data: LoginInput) {
     const user = await User.findOne({ where: { email: data.email }});
     if (user?.password !== sha256(data.password)) {

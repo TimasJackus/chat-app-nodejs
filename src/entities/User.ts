@@ -31,7 +31,4 @@ export class User extends BaseEntity {
   @Field(() => String, { nullable: true })
   @Column({ length: 256, nullable: true })
   imageUrl: string;
-
-  @Field(() => String)
-  token: string;
 }
