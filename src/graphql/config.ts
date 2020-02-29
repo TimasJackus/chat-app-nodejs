@@ -1,3 +1,3 @@
 export const config = {
-    JWT_SECRET: 'fwtVlUH3u3'
+  JWT_SECRET: "fwtVlUH3u3"
 };

@@ -4,17 +4,17 @@ import { DataLoaderService } from "./DataLoaderService";
 
 @Service()
 export class UserService {
-    private readonly userLoader: DataLoaderService<string, User> = new DataLoaderService(this.batchUsersByIds);
+  private readonly userLoader: DataLoaderService<string, User> = new DataLoaderService(this.batchUsersByIds);
 
-    constructor() { }
+  constructor() {}
 
-    getUserById(id: string, fields: string[]) {
-        return this.userLoader.loadAndSelect(id, fields);
-    }
+  getUserById(id: string, fields: string[]) {
+    return this.userLoader.loadAndSelect(id, fields);
+  }
 
-    batchUsersByIds(columns: (keyof User)[]) {
-        return async function(ids: string[]) {
-            return User.findAndSelectByIds(ids, columns);
-        }
-    }
+  batchUsersByIds(columns: (keyof User)[]) {
+    return async function(ids: string[]) {
+      return User.findAndSelectByIds(ids, columns);
+    };
+  }
 }
