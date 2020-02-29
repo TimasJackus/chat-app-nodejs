@@ -1,13 +1,14 @@
-import { Resolver, Mutation, Arg, Query, Authorized } from "type-graphql";
+import { Resolver, Mutation, Arg, Query, Authorized, Subscription, Root, PubSub, PubSubEngine, Publisher, Ctx } from "type-graphql";
 import { Service } from 'typedi';
-import { User, AuthResponse } from "../entities";
+import { User, AuthResponse, SomeSubscription } from "../../entities";
 import sha256 from 'sha256';
 import { LoginInput, RegisterInput } from "./inputs";
 import { GraphQLError } from "graphql";
 import jwt from 'jsonwebtoken';
 import { config } from "../config";
-import { UserService } from "../services";
+import { UserService } from "../../services";
 import { Fields } from "./decorators/FieldsDecorator";
+import { Context } from "vm";
 
 @Service()
 @Resolver()
@@ -39,5 +40,36 @@ export class UserResolver {
       ...user,
       token: jwt.sign({ ...user }, config.JWT_SECRET)
     };
+  }
+
+  @Subscription({ 
+    topics: ({context }) => {
+      return context.user.id;
+    },
+    filter: ({ payload, args, context }) => {
+      return true;
+    }
+  })
+  someSubscription(@Root() somePayload: { message: string, date: string }): SomeSubscription {
+    return somePayload;
+  }
+
+  @Mutation(returns => Boolean)
+  async addSomething(
+    @Arg("message") message: string,
+    @Arg("id") id: string,
+    @PubSub() pubSub: PubSubEngine
+  ) {
+    const payload = { 
+      message,
+      date: Date.now().toLocaleString()
+    };
+    await pubSub.publish(id, payload);
+    return true;
+  }
+
+  @Query(() => String)
+  async queryForTesting(@Arg("param") param: string) {
+    return Promise.resolve(param);
   }
 }

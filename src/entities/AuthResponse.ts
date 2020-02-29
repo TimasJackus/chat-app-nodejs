@@ -3,6 +3,6 @@ import { ObjectType, Field } from "type-graphql";
 
 @ObjectType()
 export class AuthResponse extends User {
-    @Field(() => String)
+    @Field(() => String, { nullable: true })
     token: string;
 }

@@ -31,4 +31,14 @@ export class User extends BaseEntity {
   @Field(() => String, { nullable: true })
   @Column({ length: 256, nullable: true })
   imageUrl: string;
+
+  static mapNullObjectsToList<T extends BaseEntity>(ids: string[], list: T[]) {
+    return ids.map((id: string) => list.find((item: any) => item.id === id) || null);
+  }
+
+  // static findAndSelectByIds<T extends BaseEntity>(this: ObjectType<T>, ids: string[], options?: FindManyOptions<T>): Promise<T[]>;
+  static async findAndSelectByIds<T extends BaseEntity>(ids: string[], select: (keyof T)[]) {
+    const entities = await this.findByIds(ids, { select });
+    return this.mapNullObjectsToList(ids, entities);
+  };
 }
