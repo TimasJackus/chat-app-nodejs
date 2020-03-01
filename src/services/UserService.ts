@@ -1,20 +1,23 @@
-import { Service } from "typedi";
-import { User } from "../entities";
-import { DataLoaderService } from "./DataLoaderService";
+import { Service } from 'typedi';
+import { User } from '../entities';
+import { DataLoaderService } from './DataLoaderService';
 
 @Service()
 export class UserService {
-  private readonly userLoader: DataLoaderService<string, User> = new DataLoaderService(this.batchUsersByIds);
+    private readonly userLoader: DataLoaderService<
+        string,
+        User
+    > = new DataLoaderService(this.batchUsersByIds);
 
-  constructor() {}
+    constructor() {}
 
-  getUserById(id: string, fields: string[]) {
-    return this.userLoader.loadAndSelect(id, fields);
-  }
+    getUserById(id: string, fields: string[]) {
+        return this.userLoader.loadAndSelect(id, fields);
+    }
 
-  batchUsersByIds(columns: (keyof User)[]) {
-    return async function(ids: string[]) {
-      return User.findAndSelectByIds(ids, columns);
-    };
-  }
+    private batchUsersByIds(columns: (keyof User)[]) {
+        return async function(ids: string[]) {
+            return User.findAndSelectByIds(ids, columns);
+        };
+    }
 }
