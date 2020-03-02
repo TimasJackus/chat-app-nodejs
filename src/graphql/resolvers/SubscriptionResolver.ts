@@ -13,7 +13,9 @@ import { SubscriptionType } from '../types';
 @Resolver()
 export class SubscriptionResolver {
     @Subscription({
-        topics: ({ context }) => context.user.id,
+        topics: ({ context }) => {
+            return context.user.id;
+        },
     })
     subscribe(
         @Root()

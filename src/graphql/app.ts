@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { createConnection } from 'typeorm';
 import { ApolloServer } from 'apollo-server';
-import Container from 'typedi';
 import { createSchema, onConnect, contextMiddleware } from './helpers';
+import { disposeScopedContainer } from './helpers/disposeScopedContainer';
 
 (async () => {
     await createConnection();
@@ -13,16 +13,7 @@ import { createSchema, onConnect, contextMiddleware } from './helpers';
         subscriptions: { onConnect },
         debug: false,
         context: contextMiddleware,
-        plugins: [
-            {
-                requestDidStart: () => ({
-                    willSendResponse(requestContext) {
-                        // disposes scoped container to prevent memory leaks
-                        Container.reset(requestContext.context.requestId);
-                    },
-                }),
-            },
-        ],
+        plugins: [disposeScopedContainer],
     });
 
     server.listen({ port: 4000 }, () =>

@@ -16,6 +16,12 @@ export class UserResolver {
     constructor(private userService: UserService) {}
 
     @Authorized()
+    @Query(() => [User])
+    async getUsers(@Fields() fields: (keyof User)[]) {
+        return this.userService.getUsers(fields);
+    }
+
+    @Authorized()
     @Query(() => User, { nullable: true })
     async getUser(@Arg('id') id: string, @Fields() fields: string[]) {
         return await this.userService.getUserById(id, fields);

@@ -5,9 +5,9 @@ import {
     UserResolver,
     ConversationResolver,
     MessageResolver,
-    PrivateMessageResolver,
     SubscriptionResolver,
 } from '../resolvers';
+import { Context } from '../types';
 
 export const createSchema = () =>
     buildSchema({
@@ -15,10 +15,9 @@ export const createSchema = () =>
             UserResolver,
             ConversationResolver,
             MessageResolver,
-            PrivateMessageResolver,
             SubscriptionResolver,
         ],
-        container: ({ context }: ResolverData<any>) =>
+        container: ({ context }: ResolverData<Context>) =>
             Container.of(context.requestId),
         authChecker: ({ context }) => {
             const user = getUserFromToken(context.authorization);

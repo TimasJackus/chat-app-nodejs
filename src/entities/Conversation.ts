@@ -8,8 +8,16 @@ import {
     ManyToMany,
     JoinTable,
     TableInheritance,
+    BeforeInsert,
 } from 'typeorm';
-import { ObjectType, Field, ID } from 'type-graphql';
+import {
+    ObjectType,
+    Field,
+    ID,
+    FieldResolver,
+    Resolver,
+    Root,
+} from 'type-graphql';
 import { GenericEntity } from './GenericEntity';
 import { ConversationType } from './enums/ConversationType';
 import { User } from './User';
@@ -36,9 +44,10 @@ export class Conversation extends GenericEntity {
     @Column()
     createdAt: Date;
 
+    @Field(() => [User])
     @ManyToMany(() => User)
     @JoinTable({ name: 'conversation_members' })
-    members: User[];
+    members: User[] | string[];
 
     @Field(() => [ConversationMessage])
     @OneToMany(
@@ -46,4 +55,9 @@ export class Conversation extends GenericEntity {
         message => message.conversation
     )
     messages: Message[];
+
+    @BeforeInsert()
+    setCreatedDate() {
+        this.createdAt = new Date();
+    }
 }

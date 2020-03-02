@@ -1,27 +1,29 @@
+import { Context } from '../types';
+
 interface ContextHeaders extends Headers {
-    authorization: string
+    authorization: string;
 }
 
 interface ContextRequest extends Request {
-    headers: ContextHeaders
+    headers: ContextHeaders;
 }
 
 interface Connection {
-    context: object
+    context: Context;
 }
 
 export const contextMiddleware = ({
     req,
     connection,
 }: {
-    req: ContextRequest
-    connection: Connection
+    req: ContextRequest;
+    connection: Connection;
 }) => {
     if (connection) {
-        return connection.context
+        return connection.context;
     }
     return {
         authorization: req.headers.authorization,
         requestId: Math.floor(Math.random() * Number.MAX_SAFE_INTEGER),
-    }
-}
+    };
+};

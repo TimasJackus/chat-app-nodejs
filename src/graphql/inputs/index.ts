@@ -1,3 +1,4 @@
 export * from './RegisterInput';
 export * from './LoginInput';
-export * from './PrivateMessageInput';
+export * from './MessageInput';
+export * from './ConversationArgs';

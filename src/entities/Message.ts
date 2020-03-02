@@ -5,6 +5,8 @@ import {
     OneToMany,
     ManyToOne,
     TableInheritance,
+    BeforeInsert,
+    BeforeUpdate,
 } from 'typeorm';
 import { ObjectType, Field, ID } from 'type-graphql';
 import { GenericEntity } from './GenericEntity';
@@ -26,7 +28,7 @@ export class Message extends GenericEntity {
 
     @Field(() => User)
     @ManyToOne(() => User)
-    sender: User;
+    sender: string | User;
 
     @Column({ nullable: false })
     type: MessageType;
@@ -46,4 +48,23 @@ export class Message extends GenericEntity {
         message => message.parent
     )
     replies: Message[];
+
+    @Field(() => Date)
+    @Column()
+    createdAt: Date;
+
+    @Field(() => Date)
+    @Column()
+    updatedAt: Date;
+
+    @BeforeInsert()
+    beforeInsert() {
+        this.createdAt = new Date();
+        this.updatedAt = new Date();
+    }
+
+    @BeforeUpdate()
+    beforeUpdate() {
+        this.updatedAt = new Date();
+    }
 }

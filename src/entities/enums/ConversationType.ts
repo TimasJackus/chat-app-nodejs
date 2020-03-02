@@ -1,7 +1,7 @@
 import { registerEnumType } from 'type-graphql';
 
 export enum ConversationType {
-    Group = 'Group',
+    Group = 'Conversation',
     Channel = 'Channel',
 }
 

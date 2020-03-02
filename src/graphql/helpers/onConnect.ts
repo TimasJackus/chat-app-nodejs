@@ -1,12 +1,17 @@
-import { getUserFromToken } from "./getUserFromToken";
+import { getUserFromToken } from './getUserFromToken';
 
-export const onConnect = (connectionParams: any) => {
-    const user = getUserFromToken(connectionParams.authorization);
+interface ConnectionParams {
+    authorization: string;
+}
+
+export const onConnect = (connectionParams: Object) => {
+    const token = (connectionParams as ConnectionParams).authorization;
+    const user = getUserFromToken(token);
     if (user) {
-      return {
-        user
-      };
+        return {
+            user,
+        };
     }
 
-    throw new Error("Missing auth token!");
+    throw new Error('Missing auth token!');
 };
