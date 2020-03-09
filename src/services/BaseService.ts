@@ -2,15 +2,12 @@ import { Service } from 'typedi';
 
 @Service()
 export class BaseService<T> {
-    protected relations: (keyof T)[];
-
-    filterColumns(columns: (keyof T)[]) {
-        return (columns = columns.filter(
-            column => !this.relations.includes(column)
-        ));
-    }
-
-    filterRelations(columns: (keyof T)[]) {
-        return this.relations.filter(relation => columns.includes(relation));
+    adjustColumns(columns: string[], aliasName: string) {
+        return columns.map(column => {
+            if (column.includes('.')) {
+                return column;
+            }
+            return `${aliasName}.${column}`;
+        });
     }
 }

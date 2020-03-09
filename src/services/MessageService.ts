@@ -47,7 +47,6 @@ export class MessageService {
             <string>message.conversation
         );
         ids.forEach(id => {
-            console.log(id);
             pubSub.publish(id, message);
         });
         return ids;

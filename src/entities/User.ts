@@ -39,7 +39,6 @@ export class User extends GenericEntity {
     @Field(() => String, { nullable: true })
     @Column({ length: 256, nullable: true })
     imageUrl: string;
-
     // @OneToMany(
     //     () => Message,
     //     message => message.sender

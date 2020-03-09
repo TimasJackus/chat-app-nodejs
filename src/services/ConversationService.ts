@@ -13,7 +13,6 @@ interface ConversationMembers {
 export class ConversationService extends BaseService<Conversation> {
     constructor() {
         super();
-        this.relations = ['members'];
     }
 
     async checkIfExists(id: string) {
@@ -23,17 +22,20 @@ export class ConversationService extends BaseService<Conversation> {
         }
     }
 
-    async getAll(columns: (keyof Conversation)[]) {
-        const conversations = await Conversation.find({
-            select: this.filterColumns(columns),
-            relations: this.filterRelations(columns),
-        });
-        // const conversations = await getConnection()
-        //     .getRepository(Conversation)
-        //     .createQueryBuilder('conversation')
-        //     .leftJoinAndSelect('conversation.members', 'member')
-        //     .select(['conversation.id', 'member.id'])
-        //     .getMany();
+    async getAll(columns: string[]) {
+        columns = this.adjustColumns(columns, 'conversation');
+        const hasMemberColumn = columns.find(column =>
+            column.includes('member')
+        )
+            ? true
+            : false;
+        let conversations: any = await getConnection()
+            .getRepository(Conversation)
+            .createQueryBuilder('conversation');
+        conversations = hasMemberColumn
+            ? conversations.leftJoinAndSelect('conversation.members', 'members')
+            : conversations;
+        conversations = conversations.select(columns).getMany();
         return conversations;
     }
 

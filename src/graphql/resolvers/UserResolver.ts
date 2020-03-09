@@ -18,7 +18,8 @@ export class UserResolver {
     @Authorized()
     @Query(() => [User])
     async getUsers(@Fields() fields: (keyof User)[]) {
-        return this.userService.getUsers(fields);
+        const users = await this.userService.getUsers(fields);
+        return users;
     }
 
     @Authorized()
