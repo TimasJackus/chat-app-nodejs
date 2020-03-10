@@ -1,6 +1,5 @@
 import { createParamDecorator } from 'type-graphql';
-import graphqlFields from 'graphql-fields';
-import { fieldsList, fieldsMap, fieldsProjection } from 'graphql-fields-list';
+import { fieldsProjection } from 'graphql-fields-list';
 
 export function Fields(): ParameterDecorator {
     return createParamDecorator(({ info }) => {

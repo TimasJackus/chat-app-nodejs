@@ -3,7 +3,7 @@ import { ObjectType, Field, ID } from 'type-graphql';
 @ObjectType()
 export class SubscriptionType {
     @Field(() => String)
-    message: string;
+    content: string;
 
     @Field(() => ID)
     sender: string;

@@ -1,14 +1,6 @@
-import {
-    Entity,
-    Column,
-    Index,
-    PrimaryGeneratedColumn,
-    OneToMany,
-} from 'typeorm';
+import { Entity, Column, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { ObjectType, Field, ID } from 'type-graphql';
 import { GenericEntity } from './GenericEntity';
-import { Message } from './Message';
-
 @Entity()
 @ObjectType()
 export class User extends GenericEntity {
@@ -39,9 +31,4 @@ export class User extends GenericEntity {
     @Field(() => String, { nullable: true })
     @Column({ length: 256, nullable: true })
     imageUrl: string;
-    // @OneToMany(
-    //     () => Message,
-    //     message => message.sender
-    // )
-    // messages: Message[];
 }

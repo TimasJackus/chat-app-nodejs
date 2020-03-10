@@ -20,7 +20,7 @@ export class SubscriptionResolver {
     subscribe(
         @Root()
         somePayload: {
-            message: string;
+            content: string;
             sender: string;
             recipient: string;
         }

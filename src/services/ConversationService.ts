@@ -26,9 +26,7 @@ export class ConversationService extends BaseService<Conversation> {
         columns = this.adjustColumns(columns, 'conversation');
         const hasMemberColumn = columns.find(column =>
             column.includes('member')
-        )
-            ? true
-            : false;
+        );
         let conversations: any = await getConnection()
             .getRepository(Conversation)
             .createQueryBuilder('conversation');
