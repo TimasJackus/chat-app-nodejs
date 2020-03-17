@@ -8,7 +8,7 @@ import { ConversationType } from './enums/ConversationType';
 export class Channel extends Conversation {
     @Field(() => String, { nullable: true })
     @Column({ nullable: true })
-    channelName: ConversationType;
+    name: string;
 
     @Field(() => Boolean, { nullable: true })
     @Column({ nullable: true })

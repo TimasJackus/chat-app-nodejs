@@ -10,12 +10,15 @@ import {
     Ctx,
     PubSub,
     PubSubEngine,
+    Query,
+    Args,
 } from 'type-graphql';
 import { Message } from '../../entities/Message';
 import { Fields } from '../decorators';
 import { UserService, MessageService } from '../../services';
 import { MessageInput } from '../inputs';
 import { Context } from 'vm';
+import { PrivateMessage } from '../../entities/PrivateMessage';
 
 @Service()
 @Resolver(() => Message)
@@ -41,8 +44,35 @@ export class MessageResolver implements ResolverInterface<Message> {
         return payload;
     }
 
+    @Authorized()
+    @Query(() => [Message])
+    async getConversationMessages(
+        @Arg('conversationId') conversationId: string,
+        @Ctx() context: Context
+    ) {
+        return this.messageService.getConversationMessages(conversationId);
+    }
+
+    @Authorized()
+    @Query(() => [PrivateMessage])
+    async getPrivateMessages(
+        @Arg('userId') recipientId: string,
+        @Ctx() context: Context
+    ) {
+        return this.messageService.getPrivateMessages(
+            context.user.id,
+            recipientId
+        );
+    }
+
     @FieldResolver()
     sender(@Root() message: Message, @Fields() fields: string[]) {
-        return this.userService.getUserById(message.sender.toString(), fields);
+        if (typeof message.sender === 'string') {
+            return this.userService.getUserById(
+                message.sender.toString(),
+                fields
+            );
+        }
+        return message.sender;
     }
 }

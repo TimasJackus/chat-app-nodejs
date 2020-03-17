@@ -3,6 +3,8 @@ import { Conversation, User } from '../entities';
 import { BaseService } from './BaseService';
 import { GraphQLError } from 'graphql';
 import { getConnection } from 'typeorm';
+import { ConversationType } from '../entities/enums';
+import { Channel } from '../entities/Channel';
 
 interface ConversationMembers {
     userId: string;
@@ -52,7 +54,7 @@ export class ConversationService extends BaseService<Conversation> {
         return conversation ? true : false;
     }
 
-    async create(members: string[]) {
+    async createGroupChat(members: string[]) {
         const conversation = new Conversation();
         const users = members.map(member => {
             const user = new User();
@@ -61,5 +63,16 @@ export class ConversationService extends BaseService<Conversation> {
         });
         conversation.members = users;
         return conversation.save();
+    }
+
+    async createChannel(userId: string, name: string, isPrivate: boolean) {
+        const channel = new Channel();
+        const user = new User();
+        user.id = userId;
+        channel.members = [user];
+        channel.name = name;
+        channel.isPrivate = isPrivate;
+
+        return channel.save();
     }
 }

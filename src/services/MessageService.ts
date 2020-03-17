@@ -69,4 +69,23 @@ export class MessageService {
         });
         return dbMessage.save();
     }
+
+    async getConversationMessages(conversationId: string) {
+        // Check if user should see these messages.
+        return ConversationMessage.find({
+            where: { conversation: conversationId },
+            relations: ['sender'],
+        });
+    }
+
+    async getPrivateMessages(senderId: string, recipientId: string) {
+        // Check if user should see these messages.
+        return PrivateMessage.find({
+            where: [
+                { recipient: recipientId, sender: senderId },
+                { recipient: senderId, sender: recipientId },
+            ],
+            relations: ['sender', 'recipient'],
+        });
+    }
 }

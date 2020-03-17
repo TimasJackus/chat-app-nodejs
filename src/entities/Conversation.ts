@@ -49,7 +49,6 @@ export class Conversation extends GenericEntity {
     @JoinTable({ name: 'conversation_members' })
     members: User[] | string[];
 
-    @Field(() => [ConversationMessage])
     @OneToMany(
         () => ConversationMessage,
         message => message.conversation
