@@ -2,7 +2,6 @@ import { Service } from 'typedi';
 import { User } from '../entities';
 import { DataLoaderService } from './DataLoaderService';
 import { GraphQLError } from 'graphql';
-import { BaseService } from './BaseService';
 
 @Service()
 export class UserService {
@@ -17,6 +16,10 @@ export class UserService {
 
     getUsers(columns: (keyof User)[]) {
         return User.find({ select: columns });
+    }
+
+    getUsersByIds(ids: string[]) {
+        return User.findByIds(ids);
     }
 
     async checkIfExists(id: string) {

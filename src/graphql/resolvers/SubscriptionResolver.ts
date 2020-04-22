@@ -1,13 +1,10 @@
 import {
     Resolver,
-    Mutation,
-    Arg,
     Subscription,
-    Root,
-    Authorized,
+    Root
 } from 'type-graphql';
 import { Service } from 'typedi';
-import { SubscriptionType } from '../types';
+import { SubscriptionEvent } from '../types';
 
 @Service()
 @Resolver()
@@ -19,12 +16,8 @@ export class SubscriptionResolver {
     })
     subscribe(
         @Root()
-        somePayload: {
-            content: string;
-            sender: string;
-            recipient: string;
-        }
-    ): SubscriptionType {
-        return somePayload;
+        payload: SubscriptionEvent
+    ): SubscriptionEvent {
+        return payload;
     }
 }

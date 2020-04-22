@@ -1,21 +1,20 @@
 import { Service } from 'typedi';
 import {
-    Resolver,
-    Root,
-    FieldResolver,
-    ResolverInterface,
-    Authorized,
-    Mutation,
     Arg,
+    Authorized,
     Ctx,
+    FieldResolver,
+    Mutation,
     PubSub,
     PubSubEngine,
     Query,
-    Args,
+    Resolver,
+    ResolverInterface,
+    Root,
 } from 'type-graphql';
 import { Message } from '../../entities/Message';
 import { Fields } from '../decorators';
-import { UserService, MessageService } from '../../services';
+import { MessageService, UserService } from '../../services';
 import { MessageInput } from '../inputs';
 import { Context } from 'vm';
 import { PrivateMessage } from '../../entities/PrivateMessage';
@@ -35,27 +34,26 @@ export class MessageResolver implements ResolverInterface<Message> {
         @Ctx() context: Context,
         @PubSub() pubSub: PubSubEngine
     ) {
-        const payload = await this.messageService.insertAndPublish(pubSub, {
+        return await this.messageService.insertAndPublish(pubSub, {
             senderId: context.user.id,
             targetId: data.targetId,
             type: data.type,
             content: data.content,
         });
-        return payload;
     }
 
     @Authorized()
     @Query(() => [Message])
-    async getConversationMessages(
+    async conversationMessages(
         @Arg('conversationId') conversationId: string,
         @Ctx() context: Context
     ) {
-        return this.messageService.getConversationMessages(conversationId);
+        return this.messageService.getConversationMessages(conversationId, context.user.id);
     }
 
     @Authorized()
     @Query(() => [PrivateMessage])
-    async getPrivateMessages(
+    async messages(
         @Arg('userId') recipientId: string,
         @Ctx() context: Context
     ) {

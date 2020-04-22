@@ -3,18 +3,26 @@ import { Conversation, User } from '../entities';
 import { BaseService } from './BaseService';
 import { GraphQLError } from 'graphql';
 import { getConnection } from 'typeorm';
-import { ConversationType } from '../entities/enums';
 import { Channel } from '../entities/Channel';
-
-interface ConversationMembers {
-    userId: string;
-    conversationId: string;
-}
+import { UserService } from './UserService';
 
 @Service()
 export class ConversationService extends BaseService<Conversation> {
-    constructor() {
+    constructor(private userService: UserService) {
         super();
+    }
+
+    async getConversation(id: string, userId: string): Promise<Conversation> {
+        const conversation = await Conversation.findOne(id, { relations: ['members' ]});
+        if (!conversation) {
+            throw new GraphQLError("Conversation doesn't exist");
+        }
+        conversation.members = conversation.members as User[];
+        const member = conversation.members.find(c => c.id === userId);
+        if (!member) {
+            throw new GraphQLError("You are not a member of this conversation!");
+        }
+        return conversation;
     }
 
     async checkIfExists(id: string) {
@@ -24,7 +32,7 @@ export class ConversationService extends BaseService<Conversation> {
         }
     }
 
-    async getAll(columns: string[]) {
+    async getAll(columns: string[], userId: string) {
         columns = this.adjustColumns(columns, 'conversation');
         const hasMemberColumn = columns.find(column =>
             column.includes('member')
@@ -35,7 +43,26 @@ export class ConversationService extends BaseService<Conversation> {
         conversations = hasMemberColumn
             ? conversations.leftJoinAndSelect('conversation.members', 'members')
             : conversations;
-        conversations = conversations.select(columns).getMany();
+        conversations = await conversations.select(columns).where({ type: "Conversation" }).getMany();
+        // Temp solution
+        conversations = conversations.filter((c: any) => c.members.map((m: any) => m.id).includes(userId));
+        return conversations;
+    }
+
+    async getChannels(columns: string[], userId: string) {
+        columns = this.adjustColumns(columns, 'conversation');
+        const hasMemberColumn = columns.find(column =>
+            column.includes('member')
+        );
+        let conversations: any = await getConnection()
+            .getRepository(Channel)
+            .createQueryBuilder('conversation');
+        conversations = hasMemberColumn
+            ? conversations.leftJoinAndSelect('conversation.members', 'members')
+            : conversations;
+        conversations = await conversations.select(columns).getMany();
+        // Temp solution
+        conversations = conversations.filter((c: any) => c.members.map((m: any) => m.id).includes(userId));
         return conversations;
     }
 
@@ -49,30 +76,39 @@ export class ConversationService extends BaseService<Conversation> {
         return members.map(member => member.member_userId);
     }
 
-    async conversationExists(id: string): Promise<boolean> {
-        const conversation = await Conversation.findOne(id);
-        return conversation ? true : false;
-    }
-
     async createGroupChat(members: string[]) {
         const conversation = new Conversation();
-        const users = members.map(member => {
-            const user = new User();
-            user.id = member;
-            return user;
-        });
-        conversation.members = users;
+        conversation.members = await this.userService.getUsersByIds(members);
+        return await conversation.save();
+    }
+
+    async addMembers(id: string, members: string[], userId: string) {
+        const conversation = await this.getConversation(id, userId);
+        conversation.members = conversation.members as User[];
+        const ids = conversation.members.map(c => c.id);
+        conversation.members = await this.userService.getUsersByIds(members.concat(ids));
         return conversation.save();
     }
 
-    async createChannel(userId: string, name: string, isPrivate: boolean) {
+    async getChannelByName(name: string) {
+        return Channel.findOne({ name });
+    }
+
+    async createChannel(members: string[], name: string, isPrivate: boolean) {
+        if (await this.getChannelByName(name)) {
+            throw new GraphQLError("Channel with this name already exists!");
+        }
         const channel = new Channel();
-        const user = new User();
-        user.id = userId;
-        channel.members = [user];
+        channel.members = await this.userService.getUsersByIds(members);
         channel.name = name;
         channel.isPrivate = isPrivate;
-
         return channel.save();
+    }
+
+    async leaveConversation(id: string, userId: string) {
+        const conversation = await this.getConversation(id, userId);
+        conversation.members = conversation.members as User[];
+        conversation.members = conversation.members.filter(c => c.id !== userId);
+        return await conversation.save();
     }
 }

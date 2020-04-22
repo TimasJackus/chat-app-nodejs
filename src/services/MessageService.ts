@@ -5,7 +5,8 @@ import { MessageType } from '../entities/enums';
 import { ConversationService } from './ConversationService';
 import { ConversationMessage } from '../entities/ConversationMessage';
 import { PubSubEngine } from 'type-graphql';
-import { Message } from '../entities/Message';
+import { SubscriptionEvent } from '../graphql/types';
+import { EventPayload } from '../graphql/types/EventPayload';
 
 interface IMessage {
     senderId: string;
@@ -26,7 +27,11 @@ export class MessageService {
             case MessageType.Private:
                 await this.userService.checkIfExists(message.targetId);
                 const privateMessage = await this.insertPrivateMessage(message);
-                pubSub.publish(message.targetId, privateMessage);
+                if (message.targetId !== message.senderId) {
+                    const eventPayload = new EventPayload(message.senderId, privateMessage);
+                    const event = new SubscriptionEvent("PRIVATE_MESSAGE", eventPayload);
+                    await pubSub.publish(message.targetId, event);
+                }
                 return privateMessage;
             default:
             case MessageType.Conversation:
@@ -34,22 +39,27 @@ export class MessageService {
                 const conversationMessage = await this.insertConversationMessage(
                     message
                 );
-                this.publishConversationMessage(pubSub, conversationMessage);
+                await this.publishConversationMessage(pubSub, conversationMessage, message.senderId, message.targetId);
                 return conversationMessage;
         }
     }
 
     async publishConversationMessage(
         pubSub: PubSubEngine,
-        message: ConversationMessage
+        message: ConversationMessage,
+        senderId: string,
+        targetId: string
     ) {
+        const eventPayload = new EventPayload(targetId, message);
+        const event = new SubscriptionEvent("CONVERSATION_MESSAGE", eventPayload);
         const ids = await this.conversationService.getListenerIds(
             <string>message.conversation
         );
         ids.forEach(id => {
-            pubSub.publish(id, message);
+            if (id !== senderId) {
+                pubSub.publish(id, event);
+            }
         });
-        return ids;
     }
 
     async insertPrivateMessage(message: IMessage) {
@@ -62,6 +72,7 @@ export class MessageService {
     }
 
     async insertConversationMessage(message: IMessage) {
+        await this.conversationService.getConversation(message.targetId, message.senderId);
         const dbMessage = ConversationMessage.create({
             sender: message.senderId,
             conversation: message.targetId,
@@ -70,8 +81,8 @@ export class MessageService {
         return dbMessage.save();
     }
 
-    async getConversationMessages(conversationId: string) {
-        // Check if user should see these messages.
+    async getConversationMessages(conversationId: string, userId: string) {
+        await this.conversationService.getConversation(conversationId, userId);
         return ConversationMessage.find({
             where: { conversation: conversationId },
             relations: ['sender'],
@@ -79,7 +90,6 @@ export class MessageService {
     }
 
     async getPrivateMessages(senderId: string, recipientId: string) {
-        // Check if user should see these messages.
         return PrivateMessage.find({
             where: [
                 { recipient: recipientId, sender: senderId },
