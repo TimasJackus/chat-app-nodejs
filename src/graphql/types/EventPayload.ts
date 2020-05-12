@@ -1,16 +1,16 @@
-import { ObjectType, Field, ID } from 'type-graphql';
-import { Message } from '../../entities/Message';
+import { ObjectType, Field, ID } from "type-graphql";
+import { Message } from "../../entities/Message";
 
 @ObjectType()
 export class EventPayload {
-    constructor(chatId: string, message: Message) {
-        this.chatId = chatId;
-        this.message = message;
-    }
+  constructor(chatId: string, message: Message) {
+    this.chatId = chatId;
+    this.message = message;
+  }
 
-    @Field(() => ID, { nullable: true })
-    chatId: string;
+  @Field(() => ID, { nullable: true })
+  chatId: string;
 
-    @Field(() => Message, { nullable: true })
-    message: Message;
+  @Field(() => Message, { nullable: true })
+  message: Message;
 }

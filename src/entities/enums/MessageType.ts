@@ -1,10 +1,11 @@
-import { registerEnumType } from 'type-graphql';
+import { registerEnumType } from "type-graphql";
 
 export enum MessageType {
-    Private = 'PrivateMessage',
-    Conversation = 'ConversationMessage',
+  Private = "PrivateMessage",
+  Conversation = "ConversationMessage",
+  Reply = "Message",
 }
 
 registerEnumType(MessageType, {
-    name: 'MessageType',
+  name: "MessageType",
 });

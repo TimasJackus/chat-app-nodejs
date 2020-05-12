@@ -1,16 +1,17 @@
-import { ObjectType, Field } from 'type-graphql';
-import { EventPayload } from './EventPayload';
+import { ObjectType, Field } from "type-graphql";
+import { EventPayload } from "./EventPayload";
+import { EventType } from "./EventType";
 
 @ObjectType()
 export class SubscriptionEvent {
-    constructor(event: string, payload: EventPayload) {
-        this.event = event;
-        this.payload = payload;
-    }
+  constructor(event: EventType, payload: EventPayload) {
+    this.event = event;
+    this.payload = payload;
+  }
 
-    @Field(() => String)
-    event: string;
+  @Field(() => EventType)
+  event: EventType;
 
-    @Field(() => EventPayload)
-    payload: EventPayload;
+  @Field(() => EventPayload)
+  payload: EventPayload;
 }

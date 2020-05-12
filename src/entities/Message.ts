@@ -8,17 +8,18 @@ import {
   BeforeInsert,
   BeforeUpdate,
 } from "typeorm";
-import { ObjectType, Field, ID } from "type-graphql";
+import { ObjectType, Field, ID, Int } from "type-graphql";
 import { GenericEntity } from "./GenericEntity";
 import { User } from "./User";
 import { MessageType } from "./enums";
 
-@Entity()
-@ObjectType()
+@Entity({ orderBy: { updatedAt: "ASC" } })
+@ObjectType(MessageType.Reply)
 @TableInheritance({
   column: {
     name: "type",
     type: "varchar",
+    default: MessageType.Reply,
   },
 })
 export class Message extends GenericEntity {
@@ -45,11 +46,14 @@ export class Message extends GenericEntity {
   @Column()
   updatedAt: Date;
 
-  @ManyToOne(() => Message, (message) => message.replies)
-  parent: Message;
+  @ManyToOne(() => Message, (message) => message.children)
+  parent: Message | string;
 
   @OneToMany(() => Message, (message) => message.parent)
-  replies: Message[];
+  children: Message[];
+
+  @Field(() => Int, { nullable: true })
+  replyCount: number;
 
   @BeforeInsert()
   beforeInsert() {
