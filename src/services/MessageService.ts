@@ -11,14 +11,7 @@ import { Message } from "../entities/Message";
 import { GraphQLError } from "graphql";
 import { Conversation, User } from "../entities";
 import { EventType } from "../graphql/types/EventType";
-import { getRepository } from "typeorm";
-
-interface IMessage {
-  senderId: string;
-  targetId: string;
-  type: string;
-  content: string;
-}
+import { IMessage } from "../graphql/types/IMessage";
 
 @Service()
 export class MessageService {
@@ -40,13 +33,14 @@ export class MessageService {
           const event = new SubscriptionEvent(EventType.Private, eventPayload);
           await pubSub.publish(message.targetId, event);
         }
+        console.log(privateMessage);
         return privateMessage;
       case MessageType.Reply:
         const parentMessage = await Message.findOne(message.targetId, {
-          relations: ["sender", "recipient", "conversation"],
+          relations: ["sender", "recipient", "conversation", "pinnedUsers"],
         });
         if (!parentMessage) {
-          throw new GraphQLError("Message doesn't exist");
+          throw new GraphQLError("Parent message doesn't exist");
         }
         const replyMessage = await this.insertReplyMessage(
           parentMessage,
@@ -123,12 +117,10 @@ export class MessageService {
     messageType: MessageType
   ) {
     const eventPayload = new EventPayload(targetId, message);
-    console.log({ type: message.type, eventPayload });
     const eventName =
       messageType === MessageType.Conversation
         ? EventType.Conversation
         : EventType.Reply;
-    console.log(eventName);
     const event = new SubscriptionEvent(eventName, eventPayload);
     const ids = await this.conversationService.getListenerIds(conversationId);
     ids.forEach((id) => {
@@ -139,10 +131,24 @@ export class MessageService {
   }
 
   async insertPrivateMessage(message: IMessage) {
+    if (message.id) {
+      const dbMessage = await PrivateMessage.findOne(message.id, {
+        relations: ["sender", "pinnedUsers"],
+      });
+      if (!dbMessage) {
+        throw new GraphQLError("Message doesn't exist");
+      }
+      if (message.content) {
+        dbMessage.content = message.content;
+      }
+      return dbMessage.save();
+    }
     const dbMessage = PrivateMessage.create({
       sender: message.senderId,
       recipient: message.targetId,
-      content: message.content,
+      content: message.content || undefined,
+      imageUrl: message.imageUrl || undefined,
+      type: MessageType.Private,
     });
     return dbMessage.save();
   }
@@ -158,8 +164,10 @@ export class MessageService {
     }
     const reply = Message.create({
       sender: replyMessage.senderId,
-      content: replyMessage.content,
+      content: replyMessage.content || undefined,
+      imageUrl: replyMessage.imageUrl || undefined,
       parent: parentMessage,
+      type: MessageType.Reply,
     });
     return reply.save();
   }
@@ -172,7 +180,9 @@ export class MessageService {
     const dbMessage = ConversationMessage.create({
       sender: message.senderId,
       conversation: message.targetId,
-      content: message.content,
+      content: message.content || undefined,
+      imageUrl: message.imageUrl || undefined,
+      type: MessageType.Conversation,
     });
     return dbMessage.save();
   }
@@ -181,7 +191,7 @@ export class MessageService {
     await this.conversationService.getConversation(conversationId, userId);
     return ConversationMessage.find({
       where: { conversation: conversationId },
-      relations: ["sender"],
+      relations: ["sender", "pinnedUsers"],
       order: { updatedAt: "ASC" },
     });
   }
@@ -192,18 +202,53 @@ export class MessageService {
         { recipient: recipientId, sender: senderId },
         { recipient: senderId, sender: recipientId },
       ],
-      relations: ["sender"],
+      relations: ["sender", "pinnedUsers"],
       order: { updatedAt: "ASC" },
     });
+  }
+
+  async deleteMessage(messageId: string, userId: string) {
+    const message = await Message.findOne(
+      { id: messageId },
+      { relations: ["sender", "pinnedUsers"] }
+    );
+    if (!message) {
+      throw new GraphQLError("Message not found");
+    }
+    if ((message.sender as User).id !== userId) {
+      throw new GraphQLError("You are not allowed to delete this message");
+    }
+    await message.remove();
+    return "OK";
   }
 
   async getReplies(userId: string, parentId: string) {
     // TODO: Add permission checking
     return await Message.find({
       where: { parent: parentId },
-      relations: ["sender"],
+      relations: ["sender", "pinnedUsers"],
       order: { updatedAt: "ASC" },
     });
+  }
+
+  async togglePinned(messageId: string, userId: string) {
+    const message = await Message.findOne(messageId, {
+      relations: ["pinnedUsers", "sender", "recipient", "conversation"],
+    });
+    if (!message) {
+      throw new GraphQLError("Message does not exist");
+    }
+    message.pinnedUsers = message.pinnedUsers as User[];
+    const exists = message.pinnedUsers.find((user: User) => user.id === userId);
+    if (exists) {
+      message.pinnedUsers = message.pinnedUsers.filter(
+        (user: User) => user.id !== userId
+      );
+      return message.save();
+    }
+    const pinnedUsers = await this.userService.getUsersByIds([userId]);
+    message.pinnedUsers = message.pinnedUsers.concat(pinnedUsers);
+    return await message.save();
   }
 
   async getReplyCount(parentId: string) {

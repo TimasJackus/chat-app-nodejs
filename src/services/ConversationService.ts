@@ -5,6 +5,7 @@ import { GraphQLError } from "graphql";
 import { getConnection } from "typeorm";
 import { Channel } from "../entities/Channel";
 import { UserService } from "./UserService";
+import { ConversationType } from "../entities/enums";
 
 @Service()
 export class ConversationService extends BaseService<Conversation> {
@@ -14,7 +15,7 @@ export class ConversationService extends BaseService<Conversation> {
 
   async getConversation(id: string, userId: string): Promise<Conversation> {
     const conversation = await Conversation.findOne(id, {
-      relations: ["members"],
+      relations: ["members", "starredUsers"],
     });
     if (!conversation) {
       throw new GraphQLError("Conversation doesn't exist");
@@ -42,17 +43,31 @@ export class ConversationService extends BaseService<Conversation> {
     }
   }
 
+  async toggleStarred(conversationId: string, userId: string) {
+    const conversation = await this.getConversation(conversationId, userId);
+    conversation.starredUsers = conversation.starredUsers as User[];
+    const exists = conversation.starredUsers.find(
+      (user: User) => user.id === userId
+    );
+    if (exists) {
+      conversation.starredUsers = conversation.starredUsers.filter(
+        (user: User) => user.id !== userId
+      );
+      return conversation.save();
+    }
+    const starredUsers = await this.userService.getUsersByIds([userId]);
+    conversation.starredUsers = conversation.starredUsers.concat(starredUsers);
+    return await conversation.save();
+  }
+
   async getAll(columns: string[], userId: string) {
     columns = this.adjustColumns(columns, "conversation");
     const hasMemberColumn = columns.find((column) => column.includes("member"));
     let conversations: any = await getConnection()
       .getRepository(Conversation)
-      .createQueryBuilder("conversation");
-    conversations = hasMemberColumn
-      ? conversations.leftJoinAndSelect("conversation.members", "members")
-      : conversations;
-    conversations = await conversations
-      .select(columns)
+      .createQueryBuilder("conversation")
+      .leftJoinAndSelect("conversation.members", "members")
+      .leftJoinAndSelect("conversation.starredUsers", "starredUsers")
       .where({ type: "Conversation" })
       .getMany();
     // Temp solution
@@ -67,15 +82,15 @@ export class ConversationService extends BaseService<Conversation> {
     const hasMemberColumn = columns.find((column) => column.includes("member"));
     let conversations: any = await getConnection()
       .getRepository(Channel)
-      .createQueryBuilder("conversation");
-    conversations = hasMemberColumn
-      ? conversations.leftJoinAndSelect("conversation.members", "members")
-      : conversations;
-    conversations = await conversations.select(columns).getMany();
+      .createQueryBuilder("conversation")
+      .leftJoinAndSelect("conversation.members", "members")
+      .leftJoinAndSelect("conversation.starredUsers", "starredUsers")
+      .getMany();
     // Temp solution
     conversations = conversations.filter((c: any) =>
       c.members.map((m: any) => m.id).includes(userId)
     );
+    // await this.toggleStarred(conversations[0].id, userId);
     return conversations;
   }
 
@@ -125,5 +140,36 @@ export class ConversationService extends BaseService<Conversation> {
     conversation.members = conversation.members as User[];
     conversation.members = conversation.members.filter((c) => c.id !== userId);
     return await conversation.save();
+  }
+
+  async getChannelsSearch(by: string, userId: string) {
+    const conversations = await Channel.createQueryBuilder()
+      .where("Channel.name ILIKE :by", { by: `%${by}%` })
+      .leftJoinAndSelect("Channel.members", "members")
+      .leftJoinAndSelect("Channel.starredUsers", "starredUsers")
+      .limit(5)
+      .getMany();
+    return conversations.filter((c: any) =>
+      c.members.map((m: any) => m.id).includes(userId)
+    );
+  }
+
+  async getConversationSearch(by: string, userId: string) {
+    const conversations = await Conversation.find({
+      join: {
+        alias: "Conversation",
+        innerJoin: { members: "Conversation.members" },
+      },
+      relations: ["members", "starredUsers"],
+      where: (qb: any) => {
+        qb.where({
+          type: ConversationType.Group,
+        }).andWhere("members.displayName ILIke :by", { by: `%${by}%` });
+      },
+      take: 5,
+    });
+    return conversations.filter((c: any) =>
+      c.members.map((m: any) => m.id).includes(userId)
+    );
   }
 }

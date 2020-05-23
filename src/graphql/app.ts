@@ -1,36 +1,43 @@
 import "reflect-metadata";
 import { createConnection } from "typeorm";
-import { ApolloServer } from "apollo-server";
+import { ApolloServer } from "apollo-server-express";
 import { createSchema, onConnect, contextMiddleware } from "./helpers";
 import { disposeScopedContainer } from "./helpers/disposeScopedContainer";
-
-var nodemon = require("nodemon");
-process
-  // Handle normal exits
-  .on("exit", (code) => {
-    nodemon.emit("quit");
-    process.exit(code);
-  })
-
-  // Handle CTRL+C
-  .on("SIGINT", () => {
-    nodemon.emit("quit");
-    process.exit(0);
-  });
+import express from "express";
+import { graphqlUploadExpress } from "graphql-upload";
+import { settings } from "../../settings";
+import path from "path";
+import http from "http";
 
 (async () => {
   await createConnection();
 
   const schema = await createSchema();
-  const server = new ApolloServer({
+  const apolloServer = new ApolloServer({
     schema,
     subscriptions: { onConnect },
     debug: false,
     context: contextMiddleware,
     plugins: [disposeScopedContainer],
+    uploads: false,
   });
 
-  server.listen({ port: 4000 }, () =>
-    console.log(`Server ready at http://localhost:4000${server.graphqlPath}`)
+  const app = express();
+  app.use(
+    "/images",
+    express.static(path.join(settings.rootDir, "storage/images"))
   );
+  app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }));
+  apolloServer.applyMiddleware({ app });
+
+  const httpServer = http.createServer(app);
+  apolloServer.installSubscriptionHandlers(httpServer);
+  httpServer.listen({ port: 4000 }, () => {
+    console.log(
+      `Server ready at http://localhost:4000${apolloServer.graphqlPath}`
+    );
+    console.log(
+      `Subscriptions ready at ws://localhost:4000${apolloServer.subscriptionsPath}`
+    );
+  });
 })();

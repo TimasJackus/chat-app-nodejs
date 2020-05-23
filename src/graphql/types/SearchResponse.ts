@@ -1,11 +1,15 @@
-import { User } from '../../entities/User'
-import { ObjectType, Field } from 'type-graphql'
+import { Conversation, User } from "../../entities";
+import { ObjectType, Field } from "type-graphql";
+import { Channel } from "../../entities/Channel";
 
 @ObjectType()
-export class AuthResponse {
-    @Field(() => String, { nullable: true })
-    token: string
+export class SearchResponse {
+  @Field(() => [User])
+  users: User[];
 
-    @Field(() => User)
-    user: User
+  @Field(() => [Channel])
+  channels: Channel[];
+
+  @Field(() => [Conversation])
+  conversations: Conversation[];
 }

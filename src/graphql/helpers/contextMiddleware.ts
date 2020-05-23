@@ -1,29 +1,33 @@
-import { Context } from '../types';
+import { Context } from "../types";
 
 interface ContextHeaders extends Headers {
-    authorization: string;
+  authorization: string;
+  host: string;
 }
 
 interface ContextRequest extends Request {
-    headers: ContextHeaders;
+  protocol: "http" | "https" | "ws";
+  headers: ContextHeaders;
 }
 
 interface Connection {
-    context: Context;
+  context: Context;
 }
 
 export const contextMiddleware = ({
-    req,
-    connection,
+  req,
+  connection,
 }: {
-    req: ContextRequest;
-    connection: Connection;
+  req: ContextRequest;
+  connection: Connection;
 }) => {
-    if (connection) {
-        return connection.context;
-    }
-    return {
-        authorization: req.headers.authorization,
-        requestId: Math.floor(Math.random() * Number.MAX_SAFE_INTEGER),
-    };
+  if (connection) {
+    return connection.context;
+  }
+  const hostname = `${req.protocol}://${req.headers.host}`;
+  return {
+    hostname,
+    authorization: req.headers.authorization,
+    requestId: Math.floor(Math.random() * Number.MAX_SAFE_INTEGER),
+  };
 };

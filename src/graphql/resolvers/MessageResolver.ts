@@ -18,29 +18,57 @@ import { Fields } from "../decorators";
 import { MessageService, UserService } from "../../services";
 import { MessageInput, ReplyInput } from "../inputs";
 import { Context } from "vm";
-import { PrivateMessage } from "../../entities/PrivateMessage";
 import { MessageType } from "../../entities/enums";
+import path from "path";
+import { FileService } from "../../services/FileService";
+import { GraphQLError } from "graphql";
+import { FileUpload, GraphQLUpload } from "graphql-upload";
+import { Conversation, User } from "../../entities";
 
 @Service()
 @Resolver(() => Message)
 export class MessageResolver implements ResolverInterface<Message> {
   constructor(
     protected userService: UserService,
-    protected messageService: MessageService
+    protected messageService: MessageService,
+    protected fileService: FileService
   ) {}
 
   @Authorized()
   @Mutation(() => Message)
   async sendMessage(
     @Arg("data") data: MessageInput,
+    @Arg("image", () => GraphQLUpload, { nullable: true }) image: FileUpload,
     @Ctx() context: Context,
     @PubSub() pubSub: PubSubEngine
   ) {
+    if (image) {
+      try {
+        const imageUrl = await this.fileService.uploadImage(image);
+        return await this.messageService.insertAndPublish(pubSub, {
+          id: data.id,
+          senderId: context.user.id,
+          targetId: data.targetId,
+          type: data.type,
+          content: null,
+          imageUrl,
+        });
+      } catch {
+        throw new GraphQLError(
+          "Could not upload image! Please try again later."
+        );
+      }
+    }
+    if (!data.content) {
+      return new GraphQLError("Message cannot be empty!");
+    }
     return await this.messageService.insertAndPublish(pubSub, {
+      id: data.id,
       senderId: context.user.id,
       targetId: data.targetId,
       type: data.type,
       content: data.content,
+      imageUrl: null,
     });
   }
 
@@ -48,15 +76,54 @@ export class MessageResolver implements ResolverInterface<Message> {
   @Mutation(() => Message)
   async sendReply(
     @Arg("data") data: ReplyInput,
+    @Arg("image", () => GraphQLUpload, { nullable: true }) image: FileUpload,
     @Ctx() context: Context,
     @PubSub() pubSub: PubSubEngine
   ) {
+    if (image) {
+      try {
+        const imageUrl = await this.fileService.uploadImage(image);
+        return await this.messageService.insertAndPublish(pubSub, {
+          id: data.id,
+          senderId: context.user.id,
+          targetId: data.parentId,
+          type: MessageType.Reply,
+          content: null,
+          imageUrl,
+        });
+      } catch (err) {
+        throw new GraphQLError(err);
+      }
+    }
+    if (!data.content) {
+      return new GraphQLError("Message cannot be empty!");
+    }
     return await this.messageService.insertAndPublish(pubSub, {
+      id: data.id,
       senderId: context.user.id,
       targetId: data.parentId,
       type: MessageType.Reply,
       content: data.content,
+      imageUrl: null,
     });
+  }
+
+  @Authorized()
+  @Mutation(() => String)
+  async deleteMessage(
+    @Arg("messageId") messageId: string,
+    @Ctx() context: Context
+  ) {
+    return this.messageService.deleteMessage(messageId, context.user.id);
+  }
+
+  @Authorized()
+  @Mutation(() => Message)
+  async togglePinned(
+    @Arg("id", () => String) id: string,
+    @Ctx() context: Context
+  ) {
+    return await this.messageService.togglePinned(id, context.user.id);
   }
 
   @Authorized()
@@ -91,6 +158,14 @@ export class MessageResolver implements ResolverInterface<Message> {
     return message.sender;
   }
 
+  @FieldResolver(() => String, { nullable: true })
+  imageUrl(@Root() message: Message, @Ctx() context: Context) {
+    if (!message.imageUrl) {
+      return message.imageUrl;
+    }
+    return context.hostname + message.imageUrl;
+  }
+
   @FieldResolver(() => Int, { nullable: true })
   replyCount(@Root() message: Message) {
     return this.messageService.getReplyCount(message.id);
@@ -101,5 +176,15 @@ export class MessageResolver implements ResolverInterface<Message> {
     return typeof message.parent === "string"
       ? message.parent
       : message.parent?.id;
+  }
+
+  @FieldResolver(() => Boolean)
+  pinned(@Root() message: Message, @Ctx() context: Context) {
+    if (!message.pinnedUsers) {
+      return false;
+    }
+    return !!(message.pinnedUsers as User[]).find(
+      (user: User) => user.id === context.user.id
+    );
   }
 }

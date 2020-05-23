@@ -1,62 +1,62 @@
 import {
-    Entity,
-    Column,
-    PrimaryGeneratedColumn,
-    OneToOne,
-    JoinColumn,
-    OneToMany,
-    ManyToMany,
-    JoinTable,
-    TableInheritance,
-    BeforeInsert,
-} from 'typeorm';
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  OneToOne,
+  JoinColumn,
+  OneToMany,
+  ManyToMany,
+  JoinTable,
+  TableInheritance,
+  BeforeInsert,
+} from "typeorm";
 import {
-    ObjectType,
-    Field,
-    ID,
-    FieldResolver,
-    Resolver,
-    Root,
-} from 'type-graphql';
-import { GenericEntity } from './GenericEntity';
-import { ConversationType } from './enums/ConversationType';
-import { User } from './User';
-import { Message } from './Message';
-import { ConversationMessage } from './ConversationMessage';
+  ObjectType,
+  Field,
+  ID,
+  FieldResolver,
+  Resolver,
+  Root,
+} from "type-graphql";
+import { GenericEntity } from "./GenericEntity";
+import { ConversationType } from "./enums/ConversationType";
+import { User } from "./User";
+import { Message } from "./Message";
+import { ConversationMessage } from "./ConversationMessage";
 
 @Entity()
 @ObjectType()
-@TableInheritance({ column: { type: 'varchar', name: 'type' } })
+@TableInheritance({ column: { type: "varchar", name: "type" } })
 export class Conversation extends GenericEntity {
-    @Field(() => ID)
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+  @Field(() => ID)
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
 
-    @Field(() => ConversationType)
-    @Column({ default: ConversationType.Group })
-    type: ConversationType;
+  @Field(() => ConversationType)
+  @Column({ default: ConversationType.Group })
+  type: ConversationType;
 
-    @Field(() => Boolean)
-    @Column({ default: false })
-    starred: boolean;
+  @ManyToMany(() => User)
+  @JoinTable({ name: "conversation_starred" })
+  starredUsers: string[] | User[];
 
-    @Field(() => Date)
-    @Column()
-    createdAt: Date;
+  @Field(() => Boolean)
+  starred: boolean;
 
-    @Field(() => [User])
-    @ManyToMany(() => User)
-    @JoinTable({ name: 'conversation_members' })
-    members: User[] | string[];
+  @Field(() => Date)
+  @Column()
+  createdAt: Date;
 
-    @OneToMany(
-        () => ConversationMessage,
-        message => message.conversation
-    )
-    messages: Message[];
+  @Field(() => [User])
+  @ManyToMany(() => User)
+  @JoinTable({ name: "conversation_members" })
+  members: User[] | string[];
 
-    @BeforeInsert()
-    setCreatedDate() {
-        this.createdAt = new Date();
-    }
+  @OneToMany(() => ConversationMessage, (message) => message.conversation)
+  messages: Message[];
+
+  @BeforeInsert()
+  setCreatedDate() {
+    this.createdAt = new Date();
+  }
 }

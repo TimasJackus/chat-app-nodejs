@@ -1,15 +1,19 @@
-import { InputType, Field, ID } from 'type-graphql';
-import { User } from '../../entities';
-import { MessageType } from '../../entities/enums';
+import { InputType, Field, ID } from "type-graphql";
+import { User } from "../../entities";
+import { MessageType } from "../../entities/enums";
+import { FileUpload, GraphQLUpload } from "graphql-upload";
 
 @InputType()
 export class MessageInput {
-    @Field(() => ID)
-    targetId: string;
+  @Field(() => ID, { nullable: true })
+  id: string;
 
-    @Field(() => MessageType)
-    type: MessageType;
+  @Field(() => ID)
+  targetId: string;
 
-    @Field()
-    content: string;
+  @Field(() => MessageType)
+  type: MessageType;
+
+  @Field({ nullable: true })
+  content: string;
 }

@@ -7,11 +7,16 @@ import {
   TableInheritance,
   BeforeInsert,
   BeforeUpdate,
+  AfterLoad,
+  ManyToMany,
+  JoinTable,
 } from "typeorm";
-import { ObjectType, Field, ID, Int } from "type-graphql";
+import { ObjectType, Field, ID, Int, Ctx } from "type-graphql";
 import { GenericEntity } from "./GenericEntity";
 import { User } from "./User";
 import { MessageType } from "./enums";
+import { Context } from "../graphql/types";
+import { getMetadataStorage } from "type-graphql/dist/metadata/getMetadataStorage";
 
 @Entity({ orderBy: { updatedAt: "ASC" } })
 @ObjectType(MessageType.Reply)
@@ -31,12 +36,17 @@ export class Message extends GenericEntity {
   @ManyToOne(() => User)
   sender: string | User;
 
+  @Field(() => MessageType)
   @Column({ nullable: false })
   type: MessageType;
 
-  @Field(() => String)
-  @Column()
+  @Field(() => String, { nullable: true })
+  @Column({ nullable: true })
   content: string;
+
+  @Field(() => String, { nullable: true })
+  @Column({ nullable: true })
+  imageUrl: string;
 
   @Field(() => Date)
   @Column()
@@ -46,11 +56,25 @@ export class Message extends GenericEntity {
   @Column()
   updatedAt: Date;
 
-  @ManyToOne(() => Message, (message) => message.children)
+  @ManyToOne(() => Message, (message) => message.children, {
+    onDelete: "CASCADE",
+  })
   parent: Message | string;
 
   @OneToMany(() => Message, (message) => message.parent)
   children: Message[];
+
+  // @Field(() => [User])
+  // @ManyToMany(() => User)
+  // @JoinTable({ name: "conversation_viewed" })
+  // viewed: User[] | string[];
+
+  @ManyToMany(() => User)
+  @JoinTable({ name: "conversation_pinned" })
+  pinnedUsers: string[] | User[];
+
+  @Field(() => Boolean)
+  pinned: boolean;
 
   @Field(() => Int, { nullable: true })
   replyCount: number;
