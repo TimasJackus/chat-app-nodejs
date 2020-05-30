@@ -11,7 +11,7 @@ import {
 } from "type-graphql";
 import { Service } from "typedi";
 import { Conversation, User } from "../../entities";
-import { ConversationService } from "../../services";
+import { ConversationService, MessageService } from "../../services";
 import { ChannelArgs } from "../inputs";
 import { Context } from "../types";
 import { Fields } from "../decorators";
@@ -19,11 +19,15 @@ import { Channel } from "../../entities/Channel";
 import { onlyUnique } from "../helpers/onlyUnique";
 import { GraphQLError } from "graphql";
 import { Message } from "../../entities/Message";
+import { PrivateMessage } from "../../entities/PrivateMessage";
 
 @Service()
 @Resolver(() => Conversation)
 export class ConversationResolver {
-  constructor(private conversationService: ConversationService) {}
+  constructor(
+    private conversationService: ConversationService,
+    private messageService: MessageService
+  ) {}
 
   @Authorized()
   @Query(() => [Conversation])
@@ -92,6 +96,20 @@ export class ConversationResolver {
   }
 
   @Authorized()
+  @Mutation(() => Channel)
+  async convertToChannel(
+    @Arg("conversationId") conversationId: string,
+    @Arg("name") name: string,
+    @Ctx() context: Context
+  ) {
+    return this.conversationService.convertToChannel(
+      conversationId,
+      name,
+      context.user.id
+    );
+  }
+
+  @Authorized()
   @Mutation(() => Conversation)
   async leaveConversation(
     @Arg("id", () => String) id: string,
@@ -114,12 +132,42 @@ export class ConversationResolver {
 
   @FieldResolver(() => Boolean)
   starred(@Root() conversation: Conversation, @Ctx() context: Context) {
-    console.log(conversation.starredUsers, context);
     if (!conversation.starredUsers) {
       return false;
     }
     return !!(conversation.starredUsers as User[]).find(
       (user: User) => user.id === context.user.id
     );
+  }
+
+  @FieldResolver(() => Number)
+  async unreadCount(
+    @Root() conversation: Conversation,
+    @Ctx() context: Context
+  ) {
+    const messages = await this.messageService.getConversationMessages(
+      conversation.id,
+      context.user.id
+    );
+
+    return messages.filter((message) => {
+      if (message.sender) {
+        if (
+          (message.sender as User).id &&
+          (message.sender as User).id === context.user.id
+        ) {
+          return false;
+        }
+        if (message.sender === context.user.id) {
+          return false;
+        }
+      }
+      if (!message.viewedUsers) {
+        return true;
+      }
+      return !(message.viewedUsers as User[]).find(
+        (user: User) => user.id === context.user.id
+      );
+    }).length;
   }
 }
