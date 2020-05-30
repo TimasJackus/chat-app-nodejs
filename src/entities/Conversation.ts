@@ -52,6 +52,9 @@ export class Conversation extends GenericEntity {
   @JoinTable({ name: "conversation_members" })
   members: User[] | string[];
 
+  @Field(() => Number)
+  unreadCount: number;
+
   @OneToMany(() => ConversationMessage, (message) => message.conversation)
   messages: Message[];
 

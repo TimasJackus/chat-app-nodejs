@@ -27,7 +27,7 @@ import http from "http";
     "/images",
     express.static(path.join(settings.rootDir, "storage/images"))
   );
-  app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }));
+  app.use(graphqlUploadExpress({ maxFileSize: 2 * 1024 * 1024, maxFiles: 1 }));
   apolloServer.applyMiddleware({ app });
 
   const httpServer = http.createServer(app);

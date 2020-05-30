@@ -120,6 +120,26 @@ export class ConversationService extends BaseService<Conversation> {
     return conversation.save();
   }
 
+  async convertToChannel(id: string, name: string, userId: string) {
+    if (await this.getChannelByName(name)) {
+      throw new GraphQLError("Channel with this name already exists!");
+    }
+    const conversation = await this.getConversation(id, userId);
+    const channel = conversation as Channel;
+    channel.type = ConversationType.Channel;
+    channel.name = name;
+    channel.isPrivate = false;
+    await Conversation.update(
+      {
+        id: conversation.id,
+      },
+      {
+        type: ConversationType.Channel,
+      }
+    );
+    return channel.save();
+  }
+
   async getChannelByName(name: string) {
     return Channel.findOne({ name });
   }

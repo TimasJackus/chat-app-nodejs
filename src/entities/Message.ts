@@ -17,6 +17,7 @@ import { User } from "./User";
 import { MessageType } from "./enums";
 import { Context } from "../graphql/types";
 import { getMetadataStorage } from "type-graphql/dist/metadata/getMetadataStorage";
+import { Reaction } from "./Reaction";
 
 @Entity({ orderBy: { updatedAt: "ASC" } })
 @ObjectType(MessageType.Reply)
@@ -64,13 +65,19 @@ export class Message extends GenericEntity {
   @OneToMany(() => Message, (message) => message.parent)
   children: Message[];
 
-  // @Field(() => [User])
-  // @ManyToMany(() => User)
-  // @JoinTable({ name: "conversation_viewed" })
-  // viewed: User[] | string[];
+  @ManyToMany(() => User)
+  @JoinTable({ name: "messages_viewed" })
+  viewedUsers: User[] | string[];
+
+  @Field(() => Boolean)
+  viewed: boolean;
+
+  @Field(() => [Reaction], { nullable: true })
+  @OneToMany(() => Reaction, (reaction) => reaction.message)
+  reactions: Reaction[];
 
   @ManyToMany(() => User)
-  @JoinTable({ name: "conversation_pinned" })
+  @JoinTable({ name: "messages_pinned" })
   pinnedUsers: string[] | User[];
 
   @Field(() => Boolean)

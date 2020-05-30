@@ -19,11 +19,10 @@ import { MessageService, UserService } from "../../services";
 import { MessageInput, ReplyInput } from "../inputs";
 import { Context } from "vm";
 import { MessageType } from "../../entities/enums";
-import path from "path";
 import { FileService } from "../../services/FileService";
 import { GraphQLError } from "graphql";
 import { FileUpload, GraphQLUpload } from "graphql-upload";
-import { Conversation, User } from "../../entities";
+import { User } from "../../entities";
 
 @Service()
 @Resolver(() => Message)
@@ -55,7 +54,7 @@ export class MessageResolver implements ResolverInterface<Message> {
         });
       } catch {
         throw new GraphQLError(
-          "Could not upload image! Please try again later."
+          "Could not upload image! File exceeds 2 MB limit."
         );
       }
     }
@@ -146,8 +145,24 @@ export class MessageResolver implements ResolverInterface<Message> {
 
   @Authorized()
   @Query(() => [Message])
+  async pinnedMessages(@Ctx() context: Context) {
+    return this.messageService.getPinnedMessages(context.user.id);
+  }
+
+  @Authorized()
+  @Query(() => [Message])
   async replies(@Arg("parentId") parentId: string, @Ctx() context: Context) {
     return this.messageService.getReplies(context.user.id, parentId);
+  }
+
+  @Authorized()
+  @Mutation(() => Message)
+  async toggleReaction(
+    @Arg("react") react: string,
+    @Arg("messageId") messageId: string,
+    @Ctx() context: Context
+  ) {
+    return this.messageService.toggleReact(react, messageId, context.user);
   }
 
   @FieldResolver()
@@ -184,6 +199,27 @@ export class MessageResolver implements ResolverInterface<Message> {
       return false;
     }
     return !!(message.pinnedUsers as User[]).find(
+      (user: User) => user.id === context.user.id
+    );
+  }
+
+  @FieldResolver(() => Boolean)
+  viewed(@Root() message: Message, @Ctx() context: Context) {
+    if (message.sender) {
+      if (
+        (message.sender as User).id &&
+        (message.sender as User).id === context.user.id
+      ) {
+        return true;
+      }
+      if (message.sender === context.user.id) {
+        return true;
+      }
+    }
+    if (!message.viewedUsers) {
+      return false;
+    }
+    return !!(message.viewedUsers as User[]).find(
       (user: User) => user.id === context.user.id
     );
   }

@@ -12,6 +12,8 @@ import { GraphQLError } from "graphql";
 import { Conversation, User } from "../entities";
 import { EventType } from "../graphql/types/EventType";
 import { IMessage } from "../graphql/types/IMessage";
+import { getConnection } from "typeorm";
+import { Reaction } from "../entities/Reaction";
 
 @Service()
 export class MessageService {
@@ -33,11 +35,17 @@ export class MessageService {
           const event = new SubscriptionEvent(EventType.Private, eventPayload);
           await pubSub.publish(message.targetId, event);
         }
-        console.log(privateMessage);
         return privateMessage;
       case MessageType.Reply:
         const parentMessage = await Message.findOne(message.targetId, {
-          relations: ["sender", "recipient", "conversation", "pinnedUsers"],
+          relations: [
+            "sender",
+            "recipient",
+            "conversation",
+            "pinnedUsers",
+            "reactions",
+            "reactions.user",
+          ],
         });
         if (!parentMessage) {
           throw new GraphQLError("Parent message doesn't exist");
@@ -133,7 +141,7 @@ export class MessageService {
   async insertPrivateMessage(message: IMessage) {
     if (message.id) {
       const dbMessage = await PrivateMessage.findOne(message.id, {
-        relations: ["sender", "pinnedUsers"],
+        relations: ["sender", "pinnedUsers", "reactions", "reactions.user"],
       });
       if (!dbMessage) {
         throw new GraphQLError("Message doesn't exist");
@@ -189,28 +197,87 @@ export class MessageService {
 
   async getConversationMessages(conversationId: string, userId: string) {
     await this.conversationService.getConversation(conversationId, userId);
-    return ConversationMessage.find({
+    const messages = await ConversationMessage.find({
       where: { conversation: conversationId },
-      relations: ["sender", "pinnedUsers"],
+      relations: [
+        "sender",
+        "pinnedUsers",
+        "viewedUsers",
+        "reactions",
+        "reactions.user",
+      ],
       order: { updatedAt: "ASC" },
     });
+    const values = messages
+      .filter((m) => {
+        return !(m.viewedUsers as User[]).find((u) => u.id === userId);
+      })
+      .map((m) => {
+        return { messageId: m.id, userId: userId };
+      });
+
+    if (values.length > 0) {
+      await getConnection()
+        .createQueryBuilder()
+        .insert()
+        .into("messages_viewed")
+        .values(values)
+        .execute();
+    }
+
+    return messages;
   }
 
   async getPrivateMessages(senderId: string, recipientId: string) {
-    return await PrivateMessage.find({
+    const messages = await PrivateMessage.find({
       where: [
         { recipient: recipientId, sender: senderId },
         { recipient: senderId, sender: recipientId },
       ],
-      relations: ["sender", "pinnedUsers"],
+      relations: [
+        "sender",
+        "pinnedUsers",
+        "viewedUsers",
+        "reactions",
+        "reactions.user",
+      ],
       order: { updatedAt: "ASC" },
     });
+
+    const values = messages
+      .filter((m) => {
+        return !(m.viewedUsers as User[]).find((u) => u.id === senderId);
+      })
+      .map((m) => {
+        return { messageId: m.id, userId: senderId };
+      });
+
+    if (values.length > 0) {
+      await getConnection()
+        .createQueryBuilder()
+        .insert()
+        .into("messages_viewed")
+        .values(values)
+        .execute();
+    }
+    return messages;
+  }
+
+  async getPinnedMessages(userId: string) {
+    const messages = await Message.find({
+      relations: ["sender", "pinnedUsers", "reactions", "reactions.user"],
+      where: [{ recipient: userId }, { sender: userId }],
+    });
+    return messages.filter(
+      (m) =>
+        !!(m.pinnedUsers as User[]).find((user: User) => user.id === userId)
+    );
   }
 
   async deleteMessage(messageId: string, userId: string) {
     const message = await Message.findOne(
       { id: messageId },
-      { relations: ["sender", "pinnedUsers"] }
+      { relations: ["sender", "pinnedUsers", "reactions", "reactions.user"] }
     );
     if (!message) {
       throw new GraphQLError("Message not found");
@@ -223,17 +290,23 @@ export class MessageService {
   }
 
   async getReplies(userId: string, parentId: string) {
-    // TODO: Add permission checking
     return await Message.find({
       where: { parent: parentId },
-      relations: ["sender", "pinnedUsers"],
+      relations: ["sender", "pinnedUsers", "reactions", "reactions.user"],
       order: { updatedAt: "ASC" },
     });
   }
 
   async togglePinned(messageId: string, userId: string) {
     const message = await Message.findOne(messageId, {
-      relations: ["pinnedUsers", "sender", "recipient", "conversation"],
+      relations: [
+        "pinnedUsers",
+        "sender",
+        "recipient",
+        "conversation",
+        "reactions",
+        "reactions.user",
+      ],
     });
     if (!message) {
       throw new GraphQLError("Message does not exist");
@@ -248,6 +321,39 @@ export class MessageService {
     }
     const pinnedUsers = await this.userService.getUsersByIds([userId]);
     message.pinnedUsers = message.pinnedUsers.concat(pinnedUsers);
+    return await message.save();
+  }
+
+  async toggleReact(react: string, messageId: string, user: User) {
+    const message = await Message.findOne(messageId, {
+      relations: [
+        "pinnedUsers",
+        "sender",
+        "conversation",
+        "reactions",
+        "reactions.user",
+      ],
+    });
+    if (!message) {
+      throw new GraphQLError("Message does not exist");
+    }
+    const exists = message.reactions.find((reaction) => {
+      return reaction.react === react && (reaction.user as User).id === user.id;
+    });
+    if (exists) {
+      message.reactions = message.reactions.filter(
+        (reaction) => reaction.id !== exists.id
+      );
+      return message.save();
+    }
+    const reaction = Reaction.create({
+      user,
+      message,
+      react,
+    });
+    await reaction.save();
+
+    message.reactions = message.reactions.concat([reaction]);
     return await message.save();
   }
 

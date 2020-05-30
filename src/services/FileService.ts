@@ -10,6 +10,7 @@ import { GraphQLError } from "graphql";
 export class FileService {
   async uploadImage(image: FileUpload): Promise<string> {
     const { createReadStream, filename } = await image;
+    console.log(image);
     const extension = filename.split(".").pop() || "";
     const allowedExtensions = ["png", "jpeg", "jpg", "gif", "tiff"];
     if (!allowedExtensions.includes(extension.toLowerCase())) {
@@ -24,10 +25,14 @@ export class FileService {
       filenameUuid
     );
     return new Promise((resolve, reject) => {
-      createReadStream().pipe(
+      const stream = createReadStream();
+      stream.on("error", () =>
+        reject("Could not upload image! File exceeds 2 MB limit.")
+      );
+      stream.pipe(
         createWriteStream(imageDestination)
           .on("error", () => {
-            reject("Could not upload image! Please try again later.");
+            reject("Could not upload image! File exceeds 2 MB limit.");
           })
           .on("finish", () => {
             resolve(`/images/${filenameUuid}`);
