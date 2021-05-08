@@ -29,7 +29,7 @@
         "sha256": "^0.2.0",
         "type-graphql": "^0.17.6",
         "typedi": "^0.8.0",
-        "typeorm": "^0.2.22",
+        "typeorm": "^0.2.25",
         "uuid": "^8.0.0"
     },
     "devDependencies": {
